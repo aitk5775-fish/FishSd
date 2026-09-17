@@ -1,7 +1,15 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>FishSd — Chess Analysis</title><style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>FishSd — Chess Analysis</title>
+
+<style>
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -156,8 +164,44 @@ select,
     border-color: var(--green-dark);
 }
 
+.analyze-btn {
+    border-color: var(--green);
+    color: var(--green);
+    font-weight: bold;
+}
+
+.analyze-btn:hover {
+    background: #12352f;
+}
+
+.stop-btn {
+    border-color: #7d3940;
+    color: #ff8992;
+}
+
 .engine-box {
     margin-bottom: 22px;
+}
+
+/* ENGINE STATUS */
+
+.engine-status {
+    margin-top: 12px;
+    padding: 11px;
+    border-radius: 8px;
+    background: #09131c;
+    border: 1px solid #20384a;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.engine-status.ready {
+    color: var(--green);
+}
+
+.engine-status.error {
+    color: #ff8992;
 }
 
 /* CENTER */
@@ -184,6 +228,7 @@ select,
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(8, 1fr);
+    touch-action: none;
 }
 
 .square {
@@ -191,6 +236,8 @@ select,
     display: flex;
     justify-content: center;
     align-items: center;
+
+    position: relative;
 
     font-family:
         "Arial Unicode MS",
@@ -200,6 +247,13 @@ select,
     font-size: clamp(25px, 5vw, 55px);
     line-height: 1;
     user-select: none;
+
+    cursor: grab;
+    touch-action: none;
+}
+
+.square:active {
+    cursor: grabbing;
 }
 
 /* CHESS PIECE IMAGES */
@@ -211,7 +265,7 @@ select,
     display: block;
     user-select: none;
     -webkit-user-drag: none;
-    pointer-events: auto;
+    pointer-events: none;
 }
 
 .light {
@@ -230,6 +284,49 @@ select,
 .white-piece {
     color: #fff;
     text-shadow: 1px 2px 2px rgba(0,0,0,.5);
+}
+
+/* SELECTED SQUARE */
+
+.square.selected {
+    box-shadow:
+        inset 0 0 0 5px rgba(25,211,154,.9);
+}
+
+/* LEGAL MOVE */
+
+.square.legal-move::after {
+    content: "";
+    position: absolute;
+    width: 23%;
+    height: 23%;
+    border-radius: 50%;
+    background: rgba(25,211,154,.78);
+    pointer-events: none;
+}
+
+/* CAPTURE MOVE */
+
+.square.capture-move::after {
+    content: "";
+    position: absolute;
+    inset: 8%;
+    border-radius: 50%;
+    border: 5px solid rgba(25,211,154,.82);
+    pointer-events: none;
+}
+
+/* LAST MOVE */
+
+.square.last-move {
+    box-shadow: inset 0 0 0 4px rgba(255,214,70,.55);
+}
+
+/* CHECK */
+
+.square.in-check {
+    box-shadow:
+        inset 0 0 0 6px rgba(255,70,70,.85);
 }
 
 /* BOARD COORDINATES */
@@ -283,6 +380,11 @@ select,
 .control-btn:hover {
     border-color: var(--green);
     color: var(--green);
+}
+
+.control-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
 }
 
 .move-list {
@@ -417,6 +519,20 @@ select,
 
 .candidate span {
     color: var(--green);
+}
+
+/* ENGINE THINKING */
+
+.engine-thinking {
+    color: var(--green);
+    font-size: 12px;
+    margin-top: -8px;
+    margin-bottom: 15px;
+    display: none;
+}
+
+.engine-thinking.show {
+    display: block;
 }
 
 /* FOOTER */
@@ -554,7 +670,16 @@ footer {
         padding: 25px 12px;
     }
 }
-</style></head><body><header><div class="logo">
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<div class="logo">
     ♟ Fish<span>Sd</span>
     <small>Chess Analysis</small>
 </div>
@@ -565,17 +690,30 @@ footer {
     <a href="#">Settings</a>
 </nav>
 
-</header><main class="main"><!-- LEFT PANEL -->
+</header>
+
+
+<main class="main">
+
+
+<!-- LEFT PANEL -->
 
 <aside class="panel left-panel">
 
     <div class="section-title">GAME</div>
 
-    <button class="action-btn upload">
+    <button class="action-btn upload" id="uploadBtn">
         ↑ &nbsp; Upload PGN
     </button>
 
-    <button class="action-btn">
+    <input
+        type="file"
+        id="pgnFile"
+        accept=".pgn,.txt"
+        style="display:none;"
+    >
+
+    <button class="action-btn" id="pastePgnBtn">
         ▣ &nbsp; Paste PGN
     </button>
 
@@ -584,23 +722,41 @@ footer {
     <div class="section-title">ENGINE</div>
 
     <div class="engine-box">
+
         <label>Engine</label>
 
-        <select>
+        <select id="engineSelect">
             <option>Stockfish</option>
         </select>
+
     </div>
 
     <div class="engine-box">
+
         <label>Depth</label>
 
-        <select>
+        <select id="depthSelect">
+
             <option>20</option>
             <option>22</option>
             <option>24</option>
             <option>26</option>
             <option>28</option>
+
         </select>
+
+    </div>
+
+    <button class="action-btn analyze-btn" id="analyzeBtn">
+        ⚡ ANALYZE 60s
+    </button>
+
+    <button class="action-btn stop-btn" id="stopBtn">
+        ■ STOP ENGINE
+    </button>
+
+    <div class="engine-status" id="engineStatus">
+        Loading Stockfish...
     </div>
 
 </aside>
@@ -614,327 +770,265 @@ footer {
 
         <div class="board-wrapper">
 
-            <div class="board">
+            <div class="board" id="board">
+
 
                 <!-- BLACK -->
 
-                <div class="square light black-piece">
-                    <img src="Black-Rook.png" alt="Black Rook" draggable="false">
+                <div class="square light black-piece"
+                     data-square="a8">
+
+                    <img src="Black-Rook.png"
+                         alt="Black Rook"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Knight.png" alt="Black Knight" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="b8">
+
+                    <img src="Black-Knight.png"
+                         alt="Black Knight"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Bishop.png" alt="Black Bishop" draggable="false">
+                <div class="square light black-piece"
+                     data-square="c8">
+
+                    <img src="Black-Bishop.png"
+                         alt="Black Bishop"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Queen.png" alt="Black Queen" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="d8">
+
+                    <img src="Black-Queen.png"
+                         alt="Black Queen"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-King.png" alt="Black King" draggable="false">
+                <div class="square light black-piece"
+                     data-square="e8">
+
+                    <img src="Black-King.png"
+                         alt="Black King"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Bishop.png" alt="Black Bishop" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="f8">
+
+                    <img src="Black-Bishop.png"
+                         alt="Black Bishop"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Knight.png" alt="Black Knight" draggable="false">
+                <div class="square light black-piece"
+                     data-square="g8">
+
+                    <img src="Black-Knight.png"
+                         alt="Black Knight"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Rook.png" alt="Black Rook" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="h8">
+
+                    <img src="Black-Rook.png"
+                         alt="Black Rook"
+                         draggable="false">
+
                 </div>
 
 
                 <!-- BLACK PAWNS -->
 
-                <div class="square dark black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="a7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square light black-piece"
+                     data-square="b7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="c7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square light black-piece"
+                     data-square="d7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="e7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square light black-piece"
+                     data-square="f7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square dark black-piece"
+                     data-square="g7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light black-piece">
-                    <img src="Black-Pawn.png" alt="Black Pawn" draggable="false">
+                <div class="square light black-piece"
+                     data-square="h7">
+
+                    <img src="Black-Pawn.png"
+                         alt="Black Pawn"
+                         draggable="false">
+
                 </div>
 
 
                 <!-- EMPTY -->
 
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
+                <div class="square light" data-square="a6"></div>
+                <div class="square dark" data-square="b6"></div>
+                <div class="square light" data-square="c6"></div>
+                <div class="square dark" data-square="d6"></div>
+                <div class="square light" data-square="e6"></div>
+                <div class="square dark" data-square="f6"></div>
+                <div class="square light" data-square="g6"></div>
+                <div class="square dark" data-square="h6"></div>
 
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
+                <div class="square dark" data-square="a5"></div>
+                <div class="square light" data-square="b5"></div>
+                <div class="square dark" data-square="c5"></div>
+                <div class="square light" data-square="d5"></div>
+                <div class="square dark" data-square="e5"></div>
+                <div class="square light" data-square="f5"></div>
+                <div class="square dark" data-square="g5"></div>
+                <div class="square light" data-square="h5"></div>
 
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
+                <div class="square light" data-square="a4"></div>
+                <div class="square dark" data-square="b4"></div>
+                <div class="square light" data-square="c4"></div>
+                <div class="square dark" data-square="d4"></div>
+                <div class="square light" data-square="e4"></div>
+                <div class="square dark" data-square="f4"></div>
+                <div class="square light" data-square="g4"></div>
+                <div class="square dark" data-square="h4"></div>
 
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
-                <div class="square dark"></div>
-                <div class="square light"></div>
+                <div class="square dark" data-square="a3"></div>
+                <div class="square light" data-square="b3"></div>
+                <div class="square dark" data-square="c3"></div>
+                <div class="square light" data-square="d3"></div>
+                <div class="square dark" data-square="e3"></div>
+                <div class="square light" data-square="f3"></div>
+                <div class="square dark" data-square="g3"></div>
+                <div class="square light" data-square="h3"></div>
 
 
                 <!-- WHITE PAWNS -->
 
-                <div class="square light white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square light white-piece"
+                     data-square="a2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square dark white-piece"
+                     data-square="b2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square light white-piece"
+                     data-square="c2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square dark white-piece"
+                     data-square="d2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square light white-piece"
+                     data-square="e2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square dark white-piece"
+                     data-square="f2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square light white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
+                <div class="square light white-piece"
+                     data-square="g2">
+
+                    <img src="White-Pawn.png"
+                         alt="White Pawn"
+                         draggable="false">
+
                 </div>
 
-                <div class="square dark white-piece">
-                    <img src="White-Pawn.png" alt="White Pawn" draggable="false">
-                </div>
+                <div class="square dark white-piece"
+                     data-square="h2">
 
-
-                <!-- WHITE -->
-
-                <div class="square dark white-piece">
-                    <img src="White-Rook.png" alt="White Rook" draggable="false">
-                </div>
-
-                <div class="square light white-piece">
-                    <img src="White-Knight.png" alt="White Knight" draggable="false">
-                </div>
-
-                <div class="square dark white-piece">
-                    <img src="White-Bishop.png" alt="White Bishop" draggable="false">
-                </div>
-
-                <div class="square light white-piece">
-                    <img src="White-Queen.png" alt="White Queen" draggable="false">
-                </div>
-
-                <div class="square dark white-piece">
-                    <img src="White-King.png" alt="White King" draggable="false">
-                </div>
-
-                <div class="square light white-piece">
-                    <img src="White-Bishop.png" alt="White Bishop" draggable="false">
-                </div>
-
-                <div class="square dark white-piece">
-                    <img src="White-Knight.png" alt="White Knight" draggable="false">
-                </div>
-
-                <div class="square light white-piece">
-                    <img src="White-Rook.png" alt="White Rook" draggable="false">
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- CONTROLS -->
-
-    <div class="panel controls-panel">
-
-        <div class="controls">
-
-            <button class="control-btn">◀◀</button>
-            <button class="control-btn">◀</button>
-            <button class="control-btn">▶</button>
-            <button class="control-btn">▶▶</button>
-
-        </div>
-
-        <div class="move-list">
-            1. e4 e5 &nbsp;&nbsp;
-            2. Nf3 Nc6 &nbsp;&nbsp;
-            3. Bb5 a6
-        </div>
-
-    </div>
-
-
-    <!-- GRAPH -->
-
-    <div class="panel graph-panel">
-
-        <div class="graph-title">
-            📈 &nbsp; EVALUATION GRAPH
-        </div>
-
-        <div class="graph">
-            <div class="graph-line"></div>
-        </div>
-
-    </div>
-
-</section>
-
-
-<!-- RIGHT PANEL -->
-
-<aside class="panel right-panel">
-
-    <div class="analysis-title">
-        ANALYSIS
-    </div>
-
-    <div class="evaluation">
-        +0.00
-    </div>
-
-
-    <div class="info-card">
-
-        <div class="info-label">
-            🎯 &nbsp; BEST MOVE
-        </div>
-
-        <div class="best-move">
-            Nf3
-        </div>
-
-    </div>
-
-
-    <div class="info-card">
-
-        <div class="info-label">
-            🔍 &nbsp; DEPTH
-        </div>
-
-        <div class="depth">
-            20
-        </div>
-
-    </div>
-
-
-    <div class="info-card">
-
-        <div class="candidate-title">
-            CANDIDATE MOVES
-        </div>
-
-        <div class="candidate">
-            <b>1. Nf3</b>
-            <span>+0.00</span>
-        </div>
-
-        <div class="candidate">
-            <b>2. Nc3</b>
-            <span>+0.00</span>
-        </div>
-
-        <div class="candidate">
-            <b>3. Bb5</b>
-            <span>+0.00</span>
-        </div>
-
-    </div>
-
-</aside>
-
-</main><!-- FOOTER --><footer><div class="footer-title">
-    FishSd ♟ — Chess Analysis
-</div>
-
-<div class="socials">
-
-    <a href="https://www.instagram.com/ait_sd18" target="_blank">
-        ◎ Instagram
-    </a>
-
-    <a href="https://www.facebook.com/share/183Aou1MuQ/" target="_blank">
-        ● Facebook
-    </a>
-
-    <a href="https://www.chess.com/member/SAID-AIT19" target="_blank">
-        ♟ Chess.com
-    </a>
-
-    <a href="tel:0688671366">
-        ☎ Phone
-    </a>
-
-    <a href="mailto:aitk5775@gmail.com">
-        ✉ Email
-    </a>
-
-</div>
-
-<div class="developer">
-    Developer: SAID AIT
-</div>
-
-</footer></body>
-</html>
+                    <img src="White-Pawn.png"
+ 
