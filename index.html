@@ -1,1034 +1,645 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!DOCTYPE html><html lang="en">
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>FishSd — Chess Analysis</title>
-
-<style>
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-:root {
-    --bg: #071018;
-    --panel: #0d1822;
-    --panel2: #111f2b;
-    --border: #1d3445;
-    --text: #e8f1f7;
-    --muted: #8da0af;
-    --green: #19d39a;
-    --green-dark: #0d6f57;
-    --light-square: #e8d7b5;
-    --dark-square: #71896c;
-}
-
-body {
-    background:
-        radial-gradient(circle at 50% 0%, #122532 0%, var(--bg) 45%);
-    color: var(--text);
-    font-family: Arial, Helvetica, sans-serif;
-    min-height: 100vh;
-}
-
-/* HEADER */
-
-header {
-    height: 72px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 38px;
-    background: rgba(7,16,24,.92);
-}
-
-.logo {
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -1px;
-}
-
-.logo span {
-    color: var(--green);
-}
-
-.logo small {
-    color: var(--muted);
-    font-size: 13px;
-    font-weight: normal;
-    margin-left: 12px;
-}
-
-nav {
-    display: flex;
-    gap: 38px;
-}
-
-nav a {
-    color: #c8d4dc;
-    text-decoration: none;
-    padding: 25px 5px;
-    font-size: 15px;
-}
-
-nav a.active,
-nav a:hover {
-    color: var(--green);
-    border-bottom: 2px solid var(--green);
-}
-
-/* MAIN */
-
-.main {
-    max-width: 1500px;
-    margin: auto;
-    padding: 25px 20px 0;
-
-    display: grid;
-    grid-template-columns: 255px minmax(450px, 1fr) 300px;
-    gap: 18px;
-}
-
-.panel {
-    background: linear-gradient(145deg, #0e1923, #0b151e);
-    border: 1px solid var(--border);
-    border-radius: 13px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.22);
-}
-
-/* LEFT */
-
-.left-panel {
-    padding: 22px;
-    align-self: start;
-}
-
-.section-title {
-    color: #cbd7df;
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 18px;
-    letter-spacing: .5px;
-}
-
-.section-title::before {
-    content: "♟";
-    color: var(--green);
-    margin-right: 9px;
-}
-
-.divider {
-    height: 1px;
-    background: var(--border);
-    margin: 24px 0;
-}
-
-label {
-    display: block;
-    color: var(--muted);
-    font-size: 13px;
-    margin-bottom: 8px;
-}
-
-select,
-.action-btn {
-    width: 100%;
-    height: 48px;
-    border: 1px solid #294052;
-    border-radius: 8px;
-    background: #16232f;
-    color: white;
-    padding: 0 14px;
-    font-size: 14px;
-}
-
-.action-btn {
-    cursor: pointer;
-    margin-bottom: 10px;
-    transition: .2s;
-}
-
-.action-btn:hover {
-    border-color: var(--green);
-    background: #172d32;
-}
-
-.upload {
-    border-color: var(--green-dark);
-}
-
-.analyze-btn {
-    border-color: var(--green);
-    color: var(--green);
-    font-weight: bold;
-}
-
-.analyze-btn:hover {
-    background: #12352f;
-}
-
-.stop-btn {
-    border-color: #7d3940;
-    color: #ff8992;
-}
-
-.engine-box {
-    margin-bottom: 22px;
-}
-
-/* ENGINE STATUS */
-
-.engine-status {
-    margin-top: 12px;
-    padding: 11px;
-    border-radius: 8px;
-    background: #09131c;
-    border: 1px solid #20384a;
-    color: var(--muted);
-    font-size: 12px;
-    line-height: 1.5;
-}
-
-.engine-status.ready {
-    color: var(--green);
-}
-
-.engine-status.error {
-    color: #ff8992;
-}
-
-/* CENTER */
-
-.center {
-    min-width: 0;
-}
-
-.board-panel {
-    padding: 20px;
-}
-
-.board-wrapper {
-    width: 100%;
-    max-width: 650px;
-    margin: auto;
-    position: relative;
-    border: 7px solid #162633;
-    box-shadow: 0 15px 45px rgba(0,0,0,.45);
-}
-
-.board {
-    width: 100%;
-    aspect-ratio: 1;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    touch-action: none;
-}
-
-.square {
-    aspect-ratio: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    position: relative;
-
-    font-family:
-        "Arial Unicode MS",
-        "Segoe UI Symbol",
-        sans-serif;
-
-    font-size: clamp(25px, 5vw, 55px);
-    line-height: 1;
-    user-select: none;
-
-    cursor: grab;
-    touch-action: none;
-}
-
-.square:active {
-    cursor: grabbing;
-}
-
-/* CHESS PIECE IMAGES */
-
-.square img {
-    width: 88%;
-    height: 88%;
-    object-fit: contain;
-    display: block;
-    user-select: none;
-    -webkit-user-drag: none;
-    pointer-events: none;
-}
-
-.light {
-    background: var(--light-square);
-}
-
-.dark {
-    background: var(--dark-square);
-}
-
-.black-piece {
-    color: #11151a;
-    text-shadow: 1px 2px 1px rgba(255,255,255,.2);
-}
-
-.white-piece {
-    color: #fff;
-    text-shadow: 1px 2px 2px rgba(0,0,0,.5);
-}
-
-/* SELECTED SQUARE */
-
-.square.selected {
-    box-shadow:
-        inset 0 0 0 5px rgba(25,211,154,.9);
-}
-
-/* LEGAL MOVE */
-
-.square.legal-move::after {
-    content: "";
-    position: absolute;
-    width: 23%;
-    height: 23%;
-    border-radius: 50%;
-    background: rgba(25,211,154,.78);
-    pointer-events: none;
-}
-
-/* CAPTURE MOVE */
-
-.square.capture-move::after {
-    content: "";
-    position: absolute;
-    inset: 8%;
-    border-radius: 50%;
-    border: 5px solid rgba(25,211,154,.82);
-    pointer-events: none;
-}
-
-/* LAST MOVE */
-
-.square.last-move {
-    box-shadow: inset 0 0 0 4px rgba(255,214,70,.55);
-}
-
-/* CHECK */
-
-.square.in-check {
-    box-shadow:
-        inset 0 0 0 6px rgba(255,70,70,.85);
-}
-
-/* BOARD COORDINATES */
-
-.coordinates {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.file-label,
-.rank-label {
-    position: absolute;
-    font-size: 11px;
-    font-weight: bold;
-    color: rgba(0,0,0,.6);
-}
-
-.file-label {
-    bottom: 2px;
-}
-
-.rank-label {
-    left: 3px;
-}
-
-/* CONTROLS */
-
-.controls-panel {
-    margin-top: 16px;
-    padding: 15px 22px;
-}
-
-.controls {
-    display: grid;
-    grid-template-columns: repeat(4,1fr);
-    gap: 12px;
-    margin-bottom: 15px;
-}
-
-.control-btn {
-    height: 52px;
-    border-radius: 8px;
-    border: 1px solid #294052;
-    background: #16232f;
-    color: white;
-    font-size: 22px;
-    cursor: pointer;
-}
-
-.control-btn:hover {
-    border-color: var(--green);
-    color: var(--green);
-}
-
-.control-btn:disabled {
-    opacity: .35;
-    cursor: not-allowed;
-}
-
-.move-list {
-    background: #09131c;
-    border-radius: 8px;
-    padding: 14px;
-    color: #c5d0d8;
-    font-size: 15px;
-    line-height: 1.8;
-    min-height: 50px;
-    overflow-x: auto;
-    white-space: nowrap;
-}
-
-/* GRAPH */
-
-.graph-panel {
-    margin-top: 16px;
-    padding: 20px;
-}
-
-.graph-title {
-    font-size: 14px;
-    margin-bottom: 18px;
-}
-
-.graph {
-    height: 150px;
-    position: relative;
-    border-left: 1px solid #294052;
-    border-bottom: 1px solid #294052;
-
-    background:
-        linear-gradient(
-            to bottom,
-            transparent 49.5%,
-            #294052 50%,
-            transparent 50.5%
-        );
-}
-
-.graph::before {
-    content: "+3.0\A +1.5\A  0.0\A -1.5\A -3.0";
-    white-space: pre;
-    position: absolute;
-    left: -38px;
-    top: -4px;
-    line-height: 31px;
-    color: #718392;
-    font-size: 10px;
-}
-
-.graph-line {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 54%;
-    height: 3px;
-    background: var(--green);
-    transform: rotate(-3deg);
-    box-shadow: 0 0 8px rgba(25,211,154,.5);
-}
-
-/* RIGHT */
-
-.right-panel {
-    padding: 22px;
-    align-self: start;
-}
-
-.analysis-title {
-    font-size: 14px;
-    margin-bottom: 18px;
-}
-
-.analysis-title::before {
-    content: "◈";
-    color: var(--green);
-    margin-right: 9px;
-}
-
-.evaluation {
-    font-size: 46px;
-    font-weight: 800;
-    color: var(--green);
-    margin-bottom: 22px;
-}
-
-.info-card {
-    background: #111f2b;
-    border: 1px solid #20384a;
-    border-radius: 9px;
-    padding: 17px;
-    margin-bottom: 14px;
-}
-
-.info-label {
-    color: #aebdca;
-    font-size: 12px;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.best-move {
-    color: var(--green);
-    font-size: 26px;
-    font-weight: bold;
-}
-
-.depth {
-    color: white;
-    font-size: 23px;
-}
-
-.candidate-title {
-    color: #aebdca;
-    font-size: 13px;
-    margin-bottom: 15px;
-}
-
-.candidate {
-    display: flex;
-    justify-content: space-between;
-    padding: 9px 0;
-    border-bottom: 1px solid #1d303f;
-    color: #d5dfe5;
-}
-
-.candidate:last-child {
-    border-bottom: 0;
-}
-
-.candidate span {
-    color: var(--green);
-}
-
-/* ENGINE THINKING */
-
-.engine-thinking {
-    color: var(--green);
-    font-size: 12px;
-    margin-top: -8px;
-    margin-bottom: 15px;
-    display: none;
-}
-
-.engine-thinking.show {
-    display: block;
-}
-
-/* FOOTER */
-
-footer {
-    max-width: 1500px;
-    margin: 25px auto 0;
-    padding: 30px 20px;
-    border-top: 1px solid var(--border);
-    text-align: center;
-}
-
-.footer-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 20px;
-}
-
-.socials {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 25px;
-}
-
-.socials a {
-    color: var(--green);
-    text-decoration: none;
-    font-size: 13px;
-}
-
-.socials a:hover {
-    text-decoration: underline;
-}
-
-.developer {
-    color: var(--muted);
-    margin-top: 18px;
-    font-size: 12px;
-}
-
-/* MOBILE */
-
-@media (max-width: 1050px) {
-
-    header {
-        padding: 0 20px;
-    }
-
-    .main {
-        grid-template-columns: 220px minmax(400px,1fr);
-    }
-
-    .right-panel {
-        grid-column: 1 / -1;
-    }
-}
-
-@media (max-width: 720px) {
-
-    header {
-        height: auto;
-        min-height: 65px;
-        padding: 14px 16px;
-        gap: 10px;
-    }
-
-    .logo {
-        font-size: 25px;
-    }
-
-    .logo small {
-        display: none;
-    }
-
-    nav {
-        gap: 12px;
-    }
-
-    nav a {
-        font-size: 12px;
-        padding: 10px 2px;
-    }
-
-    .main {
-        display: flex;
-        flex-direction: column;
-        padding: 14px 10px;
-        gap: 12px;
-    }
-
-    .left-panel {
-        order: 1;
-    }
-
-    .center {
-        order: 2;
-    }
-
-    .right-panel {
-        order: 3;
-    }
-
-    .board-panel {
-        padding: 9px;
-    }
-
-    .board-wrapper {
-        border-width: 5px;
-    }
-
-    .square {
-        font-size: clamp(25px, 10vw, 45px);
-    }
-
-    .square img {
-        width: 88%;
-        height: 88%;
-    }
-
-    .controls-panel {
-        padding: 12px;
-    }
-
-    .control-btn {
-        height: 48px;
-    }
-
-    .graph-panel {
-        margin-top: 12px;
-    }
-
-    footer {
-        margin-top: 10px;
-        padding: 25px 12px;
-    }
-}
-
-</style>
-
-</head>
-
-<body>
-
-<header>
-
-<div class="logo">
-    ♟ Fish<span>Sd</span>
-    <small>Chess Analysis</small>
-</div>
-
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#071018">
+<title>FishSd — Chess Analysis</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#071018;--panel:#0d1822;--panel2:#111f2b;--border:#1d3445;
+--text:#e8f1f7;--muted:#8da0af;--green:#19d39a;--green-dark:#0d6f57;
+--light-square:#e8d7b5;--dark-square:#71896c;
+}
+html,body{width:100%;min-height:100%;overflow-x:hidden}
+body{
+background:radial-gradient(circle at 50% 0%,#122532 0%,var(--bg) 45%);
+color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh
+}
+button,select{font:inherit}
+header{
+min-height:72px;border-bottom:1px solid var(--border);display:flex;
+align-items:center;justify-content:space-between;padding:0 38px;
+background:rgba(7,16,24,.94)
+}
+.logo{font-size:30px;font-weight:800;letter-spacing:-1px}
+.logo span{color:var(--green)}
+.logo small{color:var(--muted);font-size:13px;font-weight:normal;margin-left:12px}
+nav{display:flex;gap:28px}
+nav a{color:#c8d4dc;text-decoration:none;padding:25px 5px;font-size:15px}
+nav a.active,nav a:hover{color:var(--green);border-bottom:2px solid var(--green)}
+
+.main{
+width:100%;max-width:1500px;margin:auto;padding:25px 20px 0;
+display:grid;grid-template-columns:255px minmax(0,1fr) 300px;gap:18px
+}
+.panel{
+background:linear-gradient(145deg,#0e1923,#0b151e);
+border:1px solid var(--border);border-radius:13px;
+box-shadow:0 10px 30px rgba(0,0,0,.22)
+}
+.left-panel,.right-panel{padding:22px;align-self:start}
+.section-title{color:#cbd7df;font-size:14px;font-weight:700;margin-bottom:18px;letter-spacing:.5px}
+.section-title::before{content:"♟";color:var(--green);margin-right:9px}
+.divider{height:1px;background:var(--border);margin:24px 0}
+label{display:block;color:var(--muted);font-size:13px;margin-bottom:8px}
+select,.action-btn{
+width:100%;height:48px;border:1px solid #294052;border-radius:8px;
+background:#16232f;color:white;padding:0 14px;font-size:14px
+}
+.action-btn{cursor:pointer;margin-bottom:10px;transition:.2s}
+.action-btn:hover{border-color:var(--green);background:#172d32}
+.upload{border-color:var(--green-dark)}
+.analyze-btn{border-color:var(--green);color:var(--green);font-weight:bold}
+.stop-btn{border-color:#7d3940;color:#ff8992}
+.engine-box{margin-bottom:22px}
+.engine-status{
+margin-top:12px;padding:11px;border-radius:8px;background:#09131c;
+border:1px solid #20384a;color:var(--muted);font-size:12px;line-height:1.5
+}
+.engine-status.ready{color:var(--green)}
+.engine-status.error{color:#ff8992}
+
+.center{min-width:0;width:100%}
+.board-panel{padding:20px}
+.board-wrapper{
+width:min(100%,650px);margin:auto;position:relative;border:7px solid #162633;
+box-shadow:0 15px 45px rgba(0,0,0,.45);overflow:hidden
+}
+.board{
+width:100%;aspect-ratio:1;display:grid;
+grid-template-columns:repeat(8,minmax(0,1fr));touch-action:none
+}
+.square{
+aspect-ratio:1;display:flex;justify-content:center;align-items:center;
+position:relative;font-size:clamp(22px,5vw,55px);line-height:1;
+user-select:none;-webkit-user-select:none;cursor:pointer;touch-action:none
+}
+.square:active{cursor:grabbing}
+.square img{
+width:88%;height:88%;object-fit:contain;display:block;user-select:none;
+-webkit-user-drag:none;pointer-events:none
+}
+.light{background:var(--light-square)}
+.dark{background:var(--dark-square)}
+.square.selected{box-shadow:inset 0 0 0 5px rgba(25,211,154,.9)}
+.square.legal-move::after{
+content:"";position:absolute;width:23%;height:23%;border-radius:50%;
+background:rgba(25,211,154,.78);pointer-events:none
+}
+.square.capture-move::after{
+content:"";position:absolute;inset:8%;border-radius:50%;
+border:5px solid rgba(25,211,154,.82);pointer-events:none
+}
+.square.last-move{box-shadow:inset 0 0 0 4px rgba(255,214,70,.55)}
+.square.in-check{box-shadow:inset 0 0 0 6px rgba(255,70,70,.85)}
+.coordinates{position:absolute;inset:0;pointer-events:none}
+.file-label,.rank-label{
+position:absolute;font-size:10px;font-weight:bold;color:rgba(0,0,0,.6)
+}
+.file-label{bottom:2px}.rank-label{left:3px}
+
+.controls-panel{margin-top:16px;padding:15px 22px}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
+.control-btn{
+height:52px;border-radius:8px;border:1px solid #294052;background:#16232f;
+color:white;font-size:22px;cursor:pointer
+}
+.control-btn:hover{border-color:var(--green);color:var(--green)}
+.control-btn:disabled{opacity:.35;cursor:not-allowed}
+.move-list{
+background:#09131c;border-radius:8px;padding:14px;color:#c5d0d8;
+font-size:15px;line-height:1.8;min-height:50px;overflow-x:auto;white-space:nowrap
+}
+.move-list .move{display:inline-block;padding:2px 5px;border-radius:4px}
+.move-list .current{background:#17382f;color:var(--green)}
+
+.graph-panel{margin-top:16px;padding:20px}
+.graph-title{font-size:14px;margin-bottom:18px}
+.graph{
+height:150px;position:relative;border-left:1px solid #294052;
+border-bottom:1px solid #294052;
+background:linear-gradient(to bottom,transparent 49.5%,#294052 50%,transparent 50.5%)
+}
+.graph::before{
+content:"+3.0\A +1.5\A  0.0\A -1.5\A -3.0";white-space:pre;
+position:absolute;left:-38px;top:-4px;line-height:31px;color:#718392;font-size:10px
+}
+.graph-line{
+position:absolute;left:0;right:0;top:50%;height:3px;
+background:var(--green);box-shadow:0 0 8px rgba(25,211,154,.5)
+}
+
+.analysis-title{font-size:14px;margin-bottom:18px}
+.analysis-title::before{content:"◈";color:var(--green);margin-right:9px}
+.evaluation{font-size:46px;font-weight:800;color:var(--green);margin-bottom:22px}
+.info-card{
+background:#111f2b;border:1px solid #20384a;border-radius:9px;
+padding:17px;margin-bottom:14px
+}
+.info-label{color:#aebdca;font-size:12px;font-weight:bold;margin-bottom:10px}
+.best-move{color:var(--green);font-size:26px;font-weight:bold}
+.depth{color:white;font-size:23px}
+.candidate-title{color:#aebdca;font-size:13px;margin-bottom:15px}
+.candidate{
+display:flex;justify-content:space-between;padding:9px 0;
+border-bottom:1px solid #1d303f;color:#d5dfe5
+}
+.candidate:last-child{border-bottom:0}
+.candidate span{color:var(--green)}
+.engine-thinking{
+color:var(--green);font-size:12px;margin-top:-8px;margin-bottom:15px;display:none
+}
+.engine-thinking.show{display:block}
+
+.toast{
+position:fixed;left:50%;bottom:25px;transform:translateX(-50%);
+background:#12252d;border:1px solid var(--green);color:var(--green);
+padding:10px 18px;border-radius:8px;font-size:13px;z-index:1000;
+opacity:0;pointer-events:none;transition:.2s
+}
+.toast.show{opacity:1}
+
+.promotion{
+position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;
+align-items:center;justify-content:center;z-index:900
+}
+.promotion.show{display:flex}
+.promotion-box{
+background:#0d1822;border:1px solid var(--border);border-radius:12px;
+padding:20px;display:grid;grid-template-columns:repeat(4,65px);gap:10px
+}
+.promotion button{
+width:65px;height:65px;border:1px solid #294052;border-radius:8px;
+background:#16232f;cursor:pointer
+}
+.promotion img{width:90%;height:90%;object-fit:contain}
+
+footer{
+width:100%;max-width:1500px;margin:25px auto 0;padding:30px 20px;
+border-top:1px solid var(--border);text-align:center
+}
+.footer-title{font-size:16px;font-weight:bold;margin-bottom:20px}
+.socials{display:flex;justify-content:center;flex-wrap:wrap;gap:25px}
+.socials a{color:var(--green);text-decoration:none;font-size:13px}
+.socials a:hover{text-decoration:underline}
+.developer{color:var(--muted);margin-top:18px;font-size:12px}
+
+@media(max-width:1050px){
+header{padding:0 20px}
+.main{grid-template-columns:220px minmax(0,1fr)}
+.right-panel{grid-column:1/-1}
+}
+@media(max-width:720px){
+header{min-height:65px;height:auto;padding:12px 14px;gap:8px}
+.logo{font-size:24px}.logo small{display:none}
+nav{gap:10px}nav a{font-size:11px;padding:10px 2px}
+.main{display:flex;flex-direction:column;padding:12px 8px;gap:12px}
+.left-panel{order:1}.center{order:2}.right-panel{order:3}
+.board-panel{padding:6px}
+.board-wrapper{width:100%;border-width:4px}
+.square{font-size:clamp(20px,9vw,42px)}
+.controls-panel{padding:10px}
+.control-btn{height:46px;font-size:19px}
+.graph-panel{margin-top:12px}
+footer{margin-top:10px;padding:25px 12px}
+}
+</style></head><body><header>
+<div class="logo">♟ Fish<span>Sd</span><small>Chess Analysis</small></div>
 <nav>
-    <a href="#" class="active">Analysis</a>
-    <a href="#">Games</a>
-    <a href="#">Settings</a>
+<a href="#" class="active">Analysis</a>
+<a href="#">Games</a>
+<a href="#">Settings</a>
 </nav>
-
-</header>
-
-
-<main class="main">
-
-
-<!-- LEFT PANEL -->
-
-<aside class="panel left-panel">
-
-    <div class="section-title">GAME</div>
-
-    <button class="action-btn upload" id="uploadBtn">
-        ↑ &nbsp; Upload PGN
-    </button>
-
-    <input
-        type="file"
-        id="pgnFile"
-        accept=".pgn,.txt"
-        style="display:none;"
-    >
-
-    <button class="action-btn" id="pastePgnBtn">
-        ▣ &nbsp; Paste PGN
-    </button>
-
-    <div class="divider"></div>
-
-    <div class="section-title">ENGINE</div>
-
-    <div class="engine-box">
-
-        <label>Engine</label>
-
-        <select id="engineSelect">
-            <option>Stockfish</option>
-        </select>
-
-    </div>
-
-    <div class="engine-box">
-
-        <label>Depth</label>
-
-        <select id="depthSelect">
-
-            <option>20</option>
-            <option>22</option>
-            <option>24</option>
-            <option>26</option>
-            <option>28</option>
-
-        </select>
-
-    </div>
-
-    <button class="action-btn analyze-btn" id="analyzeBtn">
-        ⚡ ANALYZE 60s
-    </button>
-
-    <button class="action-btn stop-btn" id="stopBtn">
-        ■ STOP ENGINE
-    </button>
-
-    <div class="engine-status" id="engineStatus">
-        Loading Stockfish...
-    </div>
-
-</aside>
-
-
-<!-- CENTER -->
-
-<section class="center">
-
-    <div class="panel board-panel">
-
-        <div class="board-wrapper">
-
-            <div class="board" id="board">
-
-
-                <!-- BLACK -->
-
-                <div class="square light black-piece"
-                     data-square="a8">
-
-                    <img src="Black-Rook.png"
-                         alt="Black Rook"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="b8">
-
-                    <img src="Black-Knight.png"
-                         alt="Black Knight"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="c8">
-
-                    <img src="Black-Bishop.png"
-                         alt="Black Bishop"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="d8">
-
-                    <img src="Black-Queen.png"
-                         alt="Black Queen"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="e8">
-
-                    <img src="Black-King.png"
-                         alt="Black King"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="f8">
-
-                    <img src="Black-Bishop.png"
-                         alt="Black Bishop"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="g8">
-
-                    <img src="Black-Knight.png"
-                         alt="Black Knight"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="h8">
-
-                    <img src="Black-Rook.png"
-                         alt="Black Rook"
-                         draggable="false">
-
-                </div>
-
-
-                <!-- BLACK PAWNS -->
-
-                <div class="square dark black-piece"
-                     data-square="a7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="b7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="c7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="d7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="e7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="f7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark black-piece"
-                     data-square="g7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light black-piece"
-                     data-square="h7">
-
-                    <img src="Black-Pawn.png"
-                         alt="Black Pawn"
-                         draggable="false">
-
-                </div>
-
-
-                <!-- EMPTY -->
-
-                <div class="square light" data-square="a6"></div>
-                <div class="square dark" data-square="b6"></div>
-                <div class="square light" data-square="c6"></div>
-                <div class="square dark" data-square="d6"></div>
-                <div class="square light" data-square="e6"></div>
-                <div class="square dark" data-square="f6"></div>
-                <div class="square light" data-square="g6"></div>
-                <div class="square dark" data-square="h6"></div>
-
-                <div class="square dark" data-square="a5"></div>
-                <div class="square light" data-square="b5"></div>
-                <div class="square dark" data-square="c5"></div>
-                <div class="square light" data-square="d5"></div>
-                <div class="square dark" data-square="e5"></div>
-                <div class="square light" data-square="f5"></div>
-                <div class="square dark" data-square="g5"></div>
-                <div class="square light" data-square="h5"></div>
-
-                <div class="square light" data-square="a4"></div>
-                <div class="square dark" data-square="b4"></div>
-                <div class="square light" data-square="c4"></div>
-                <div class="square dark" data-square="d4"></div>
-                <div class="square light" data-square="e4"></div>
-                <div class="square dark" data-square="f4"></div>
-                <div class="square light" data-square="g4"></div>
-                <div class="square dark" data-square="h4"></div>
-
-                <div class="square dark" data-square="a3"></div>
-                <div class="square light" data-square="b3"></div>
-                <div class="square dark" data-square="c3"></div>
-                <div class="square light" data-square="d3"></div>
-                <div class="square dark" data-square="e3"></div>
-                <div class="square light" data-square="f3"></div>
-                <div class="square dark" data-square="g3"></div>
-                <div class="square light" data-square="h3"></div>
-
-
-                <!-- WHITE PAWNS -->
-
-                <div class="square light white-piece"
-                     data-square="a2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark white-piece"
-                     data-square="b2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light white-piece"
-                     data-square="c2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark white-piece"
-                     data-square="d2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light white-piece"
-                     data-square="e2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark white-piece"
-                     data-square="f2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square light white-piece"
-                     data-square="g2">
-
-                    <img src="White-Pawn.png"
-                         alt="White Pawn"
-                         draggable="false">
-
-                </div>
-
-                <div class="square dark white-piece"
-                     data-square="h2">
-
-                    <img src="White-Pawn.png"
- 
+</header><main class="main"><aside class="panel left-panel"><div class="section-title">GAME</div><button class="action-btn upload" id="uploadBtn">↑   Upload PGN</button>
+<input type="file" id="pgnFile" accept=".pgn,.txt" hidden>
+
+<button class="action-btn" id="pastePgnBtn">▣   Paste PGN</button>
+
+<div class="divider"></div><div class="section-title">ENGINE</div><div class="engine-box">
+<label>Engine</label>
+<select id="engineSelect"><option>Stockfish</option></select>
+</div><div class="engine-box">
+<label>Depth</label>
+<select id="depthSelect">
+<option>20</option><option>22</option><option>24</option>
+<option>26</option><option>28</option>
+</select>
+</div><button class="action-btn analyze-btn" id="analyzeBtn">⚡ ANALYZE 60s</button>
+<button class="action-btn stop-btn" id="stopBtn">■ STOP ENGINE</button>
+
+<div class="engine-status" id="engineStatus">Stockfish not loaded yet.</div></aside><section class="center"><div class="panel board-panel">
+<div class="board-wrapper">
+<div class="board" id="board"></div>
+</div>
+</div><div class="panel controls-panel">
+<div class="controls">
+<button class="control-btn" id="firstBtn" title="First position">◀◀</button>
+<button class="control-btn" id="prevBtn" title="Previous move">◀</button>
+<button class="control-btn" id="nextBtn" title="Next move">▶</button>
+<button class="control-btn" id="lastBtn" title="Last position">▶▶</button>
+</div><div class="move-list" id="moveList">No moves yet.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+<button class="action-btn" id="copyBtn">📋 COPY GAME</button>
+<button class="action-btn" id="downloadBtn">↓ DOWNLOAD GAME</button>
+</div>
+</div><div class="panel graph-panel">
+<div class="graph-title">Evaluation</div>
+<div class="graph" id="graph">
+<div class="graph-line" id="graphLine"></div>
+</div>
+</div></section><aside class="panel right-panel"><div class="analysis-title">ENGINE ANALYSIS</div><div class="evaluation" id="evaluation">—</div><div class="engine-thinking" id="engineThinking">Thinking…</div><div class="info-card">
+<div class="info-label">BEST MOVE</div>
+<div class="best-move" id="bestMove">—</div>
+</div><div class="info-card">
+<div class="info-label">DEPTH</div>
+<div class="depth" id="depthValue">—</div>
+</div><div class="info-card">
+<div class="candidate-title">CANDIDATE MOVES</div>
+<div id="candidates">
+<div class="candidate"><b>—</b><span>—</span></div>
+</div>
+</div></aside></main><footer>
+<div class="footer-title">FishSd — Chess Analysis</div>
+<div class="socials">
+<a href="https://www.instagram.com/ait_sd18/" target="_blank" rel="noopener">Instagram @ait_sd18</a>
+<a href="https://www.facebook.com/share/183Aou1MuQ/" target="_blank" rel="noopener">Facebook</a>
+</div>
+<div class="developer">Chess analysis tool by FishSd</div>
+</footer><div class="promotion" id="promotion">
+<div class="promotion-box">
+<button data-piece="q"></button>
+<button data-piece="r"></button>
+<button data-piece="b"></button>
+<button data-piece="n"></button>
+</div>
+</div><div class="toast" id="toast"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script><script>
+"use strict";
+
+/* =========================================================
+   FIS HSD CHESS CORE
+   ========================================================= */
+
+const boardEl=document.getElementById("board");
+const moveListEl=document.getElementById("moveList");
+const evaluationEl=document.getElementById("evaluation");
+const bestMoveEl=document.getElementById("bestMove");
+const depthValueEl=document.getElementById("depthValue");
+const candidatesEl=document.getElementById("candidates");
+const engineStatusEl=document.getElementById("engineStatus");
+const engineThinkingEl=document.getElementById("engineThinking");
+const toastEl=document.getElementById("toast");
+const promotionEl=document.getElementById("promotion");
+
+let game=new Chess();
+let history=[];
+let viewIndex=0;
+let selectedSquare=null;
+let legalTargets=[];
+let pendingPromotion=null;
+let engine=null;
+let engineReady=false;
+let engineBusy=false;
+let engineTimer=null;
+let engineGeneration=0;
+let currentAnalysis=null;
+
+const pieceFiles={
+w:{p:"White-Pawn.png",r:"White-Rook.png",n:"White-Knight.png",
+b:"White-Bishop.png",q:"White-Queen.png",k:"White-King.png"},
+b:{p:"Black-Pawn.png",r:"Black-Rook.png",n:"Black-Knight.png",
+b:"Black-Bishop.png",q:"Black-Queen.png",k:"Black-King.png"}
+};
+
+const files=["a","b","c","d","e","f","g","h"];
+const ranks=["8","7","6","5","4","3","2","1"];
+
+function toast(message){
+toastEl.textContent=message;
+toastEl.classList.add("show");
+clearTimeout(toast.timer);
+toast.timer=setTimeout(()=>toastEl.classList.remove("show"),1800);
+}
+
+function resetAnalysisDisplay(){
+evaluationEl.textContent="—";
+bestMoveEl.textContent="—";
+depthValueEl.textContent="—";
+candidatesEl.innerHTML='<div class="candidate"><b>—</b><span>—</span></div>';
+document.getElementById("graphLine").style.top="50%";
+}
+
+function getPositionAt(index){
+const temp=new Chess();
+
+if(!history.length)return temp;
+
+for(let i=0;i<index;i++){
+try{temp.move(history[i].san,{sloppy:true})}catch(e){break}
+}
+return temp;
+}
+
+function renderBoard(){
+boardEl.innerHTML="";
+
+const position=getPositionAt(viewIndex);
+const lastMove=viewIndex>0?history[viewIndex-1]:null;
+
+for(const rank of ranks){
+for(const file of files){
+
+const square=file+rank;
+const cell=document.createElement("div");
+
+const fileIndex=files.indexOf(file);
+const rankIndex=ranks.indexOf(rank);
+
+cell.className="square "+((fileIndex+rankIndex)%2===0?"light":"dark");
+cell.dataset.square=square;
+
+const piece=position.get(square);
+
+if(piece){
+const img=document.createElement("img");
+img.src=pieceFiles[piece.color][piece.type];
+img.alt=piece.color==="w"?"White "+piece.type:"Black "+piece.type;
+img.draggable=false;
+cell.appendChild(img);
+}
+
+if(selectedSquare===square)cell.classList.add("selected");
+
+if(legalTargets.includes(square)){
+if(position.get(square))cell.classList.add("capture-move");
+else cell.classList.add("legal-move");
+}
+
+if(lastMove&&(lastMove.from===square||lastMove.to===square))
+cell.classList.add("last-move");
+
+if(position.in_check()){
+const kingSquare=findKing(position,position.turn());
+if(kingSquare===square)cell.classList.add("in-check");
+}
+
+cell.addEventListener("click",()=>handleSquareClick(square));
+addDragHandlers(cell,square);
+
+boardEl.appendChild(cell);
+}
+}
+}
+
+function findKing(position,color){
+for(const rank of ranks){
+for(const file of files){
+const sq=file+rank;
+const p=position.get(sq);
+if(p&&p.type==="k"&&p.color===color)return sq;
+}
+}
+return null;
+}
+
+function showLegalMoves(square){
+const position=getPositionAt(viewIndex);
+const piece=position.get(square);
+
+if(!piece||piece.color!==position.turn()){
+selectedSquare=null;
+legalTargets=[];
+renderBoard();
+return;
+}
+
+selectedSquare=square;
+legalTargets=position.moves({square,verbose:true}).map(m=>m.to);
+renderBoard();
+}
+
+function handleSquareClick(square){
+
+if(viewIndex!==history.length){
+viewIndex=history.length;
+selectedSquare=null;
+legalTargets=[];
+}
+
+const position=getPositionAt(viewIndex);
+const piece=position.get(square);
+
+if(selectedSquare){
+
+if(square===selectedSquare){
+selectedSquare=null;
+legalTargets=[];
+renderBoard();
+return;
+}
+
+if(legalTargets.includes(square)){
+tryMove(selectedSquare,square);
+return;
+}
+
+if(piece&&piece.color===position.turn()){
+showLegalMoves(square);
+return;
+}
+
+selectedSquare=null;
+legalTargets=[];
+renderBoard();
+return;
+}
+
+if(piece&&piece.color===position.turn()){
+showLegalMoves(square);
+}
+}
+
+function addDragHandlers(cell,square){
+
+let startSquare=null;
+let pointerDown=false;
+
+cell.addEventListener("pointerdown",e=>{
+if(e.pointerType==="mouse"&&e.button!==0)return;
+
+const position=getPositionAt(viewIndex);
+const piece=position.get(square);
+
+if(!piece||piece.color!==position.turn())return;
+
+pointerDown=true;
+startSquare=square;
+try{cell.setPointerCapture(e.pointerId)}catch(_){}
+showLegalMoves(square);
+});
+
+cell.addEventListener("pointerup",e=>{
+if(!pointerDown)return;
+pointerDown=false;
+
+const target=document.elementFromPoint(e.clientX,e.clientY);
+const targetCell=target&&target.closest(".square");
+const destination=targetCell?targetCell.dataset.square:null;
+
+if(startSquare&&destination&&legalTargets.includes(destination)){
+tryMove(startSquare,destination);
+}
+
+startSquare=null;
+});
+
+cell.addEventListener("pointercancel",()=>{
+pointerDown=false;
+startSquare=null;
+});
+}
+
+function tryMove(from,to){
+
+const position=getPositionAt(viewIndex);
+const movingPiece=position.get(from);
+
+if(!movingPiece)return;
+
+const isPromotion=
+movingPiece.type==="p"&&
+((movingPiece.color==="w"&&to.endsWith("8"))||
+(movingPiece.color==="b"&&to.endsWith("1")));
+
+if(isPromotion){
+pendingPromotion={from,to};
+showPromotion(movingPiece.color);
+return;
+}
+
+commitMove(from,to,"q");
+}
+
+function commitMove(from,to,promotion){
+
+const position=getPositionAt(viewIndex);
+
+let result;
+
+try{
+result=position.move({from,to,promotion},{sloppy:true});
+}catch(e){
+result=null;
+}
+
+if(!result){
+toast("Illegal move");
+return;
+}
+
+if(viewIndex<history.length){
+history=history.slice(0,viewIndex);
+}
+
+history.push({
+from:result.from,
+to:result.to,
+san:result.san,
+color:result.color,
+piece:result.piece,
+flags:result.flags
+});
+
+viewIndex=history.length;
+selectedSquare=null;
+legalTargets=[];
+pendingPromotion=null;
+
+resetAnalysisDisplay();
+stopEngine(false);
+
+renderBoard();
+renderMoveList();
+updateNavigationButtons();
+}
+
+function showPromotion(color){
+promotionEl.classList.add("show");
+
+for(const button of promotionEl.querySelectorAll("button")){
+const type=button.dataset.piece;
+button.innerHTML="";
+const img=document.createElement("img");
+img.src=pieceFiles[color][type];
+button.appendChild(img);
+}
+}
+
+promotionEl.querySelectorAll("button").forEach(button=>{
+button.addEventListener("click",()=>{
+if(!pendingPromotion)return;
+
+const p=pendingPromotion;
+promotionEl.classList.remove("show");
+commitMove(p.from,p.to,button.dataset.piece);
+});
+});
+
+function renderMoveList(){
+
+if(!history.length){
+moveListEl.textContent="No moves yet.";
+return;
+}
+
+moveListEl.innerHTML="";
+
+for(let i=0;i<history.length;i+=2){
+
+const number=document.createElement("span");
+number.textContent=(Math.floor(i/2)+1)+". ";
+moveListEl.appendChild(number);
+
+const white=document.createElement("span");
+white.className="move"+(viewIndex===i+1?" current":"");
+white.textContent=history[i].san;
+moveListEl.appendChild(white);
+
+if(history[i+1]){
+const black=document.createElement("span");
+black.className="move"+(viewIndex===i+2?" current":"");
+black.textContent=" "+history[i+1].san+" ";
+moveListEl.appendChild(black);
+}
+}
+}
+
+function updateNavigationButtons(){
+document.getElementById("firstBtn").disabled=viewIndex===0;
+document.getElementById("prevBtn").disabled=viewIndex===0;
+document.getElementById("nextBtn").disabled=viewIndex===history.length;
+document.getElementById("lastBtn").disabled=viewIndex===history.length;
+}
+
+function navigate(index){
+stopEngine(false);
+viewIndex=Math.max(0,Math.min(history.length,index));
+selectedSquare=null;
+legalTargets=[];
+resetAnalysisDisplay();
+renderBoard();
+renderMoveList();
+updateNavigationButtons();
+}
+
+document.getElementById("firstBtn").onclick=()=>navigate(0);
+document.getElementById("prevBtn").onclick=()=>navigate(viewIndex-1);
+document.getElementById("nextBtn").onclick=()=>navigate(viewIndex+1);
+document.getElementById("lastBtn").onclick=()=>navigate(history.length);
+
+/* =========================================================
+   PGN
+   ========================================================= */
+
+function createCurrentChess(){
+const c=new Chess();
+for(const m of history){
+try{c.move(m.san,{slo
